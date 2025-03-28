@@ -45,9 +45,8 @@ class NewsSentimentAgent:
                 self.model = BertForSequenceClassification.from_pretrained(model_path, num_labels=3)
             
             self.model.to(self.device)
-            self.model.eval()  # Set to evaluation mode by default
+            self.model.eval()  
             
-            # Define label mapping
             self.id2label = {0: "negative", 1: "neutral", 2: "positive"}
             self.label2id = {"negative": 0, "neutral": 1, "positive": 2}
             
@@ -91,14 +90,11 @@ class NewsSentimentAgent:
         """
         logging.info(f"Fine-tuning model on {len(train_texts)} examples")
         
-        # Set model to training mode
         self.model.train()
         
-        # Encode datasets
         train_encodings = self.tokenizer(train_texts, truncation=True, padding=True)
         test_encodings = self.tokenizer(test_texts, truncation=True, padding=True)
         
-        # Create datasets
         train_dataset = Dataset.from_dict({
             'input_ids': train_encodings['input_ids'],
             'attention_mask': train_encodings['attention_mask'],
@@ -111,7 +107,6 @@ class NewsSentimentAgent:
             'labels': test_labels
         })
         
-        # Set up training arguments
         training_args = TrainingArguments(
             output_dir=self.model_dir,
             evaluation_strategy="epoch",
@@ -126,17 +121,15 @@ class NewsSentimentAgent:
             metric_for_best_model="eval_loss",
             greater_is_better=False,
             push_to_hub=False,
-            report_to="none"  # Disable wandb/tensorboard reporting
+            report_to="none" 
         )
         
-        # Define metrics computation function
         def compute_metrics(pred):
             labels = pred.label_ids
             preds = pred.predictions.argmax(-1)
             accuracy = (preds == labels).mean()
             return {'accuracy': accuracy}
         
-        # Initialize trainer
         trainer = Trainer(
             model=self.model,
             args=training_args,
@@ -158,7 +151,6 @@ class NewsSentimentAgent:
             trainer.save_model(self.model_dir)
             self.tokenizer.save_pretrained(self.model_dir)
             
-            # Set back to evaluation mode
             self.model.eval()
             
             logging.info(f"Training complete. Metrics: {metrics}")
@@ -190,7 +182,6 @@ class NewsSentimentAgent:
         ticker = ticker.upper()
         relevant = []
         
-        # Company name mappings (could be expanded)
         company_names = {
             'AAPL': ['apple', 'iphone', 'ipad', 'mac', 'tim cook'],
             'MSFT': ['microsoft', 'windows', 'azure', 'satya nadella'],
@@ -202,18 +193,15 @@ class NewsSentimentAgent:
             'NVDA': ['nvidia', 'gpu', 'jensen huang'],
         }
         
-        # Get company keywords
         company_keywords = company_names.get(ticker, [ticker.lower()])
         
         for headline in headlines:
             headline_lower = headline.lower()
             
-            # Check for ticker symbol
             if ticker.lower() in headline_lower:
                 relevant.append(headline)
                 continue
                 
-            # Check for company name and related terms
             for keyword in company_keywords:
                 if keyword in headline_lower:
                     relevant.append(headline)
@@ -232,10 +220,8 @@ class NewsSentimentAgent:
             Dict with sentiment prediction and confidence
         """
         try:
-            # Tokenize input
             inputs = self.tokenizer(headline, return_tensors="pt", truncation=True, padding=True).to(self.device)
             
-            # Get prediction
             with torch.no_grad():
                 outputs = self.model(**inputs)
                 
@@ -268,11 +254,9 @@ class NewsSentimentAgent:
         """Generate explanation for sentiment prediction based on keywords"""
         headline_lower = headline.lower()
         
-        # Count keyword matches
         pos_matches = [word for word in self.positive_keywords if word in headline_lower]
         neg_matches = [word for word in self.negative_keywords if word in headline_lower]
         
-        # Generate explanation
         if sentiment == "positive" and pos_matches:
             return f"Positive sentiment detected with keywords: {', '.join(pos_matches)}"
         elif sentiment == "negative" and neg_matches:
@@ -380,14 +364,11 @@ class NewsSentimentAgent:
         Returns:
             List of prediction results
         """
-        # Tokenize all headlines at once
         inputs = self.tokenizer(headlines, return_tensors="pt", padding=True, truncation=True).to(self.device)
         
-        # Get predictions
         with torch.no_grad():
             outputs = self.model(**inputs)
         
-        # Process results
         results = []
         probs = torch.nn.functional.softmax(outputs.logits, dim=1)
         predictions = torch.argmax(probs, dim=1)

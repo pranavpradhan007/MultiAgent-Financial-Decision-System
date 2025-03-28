@@ -34,40 +34,33 @@ class EnhancedDecisionCoordinator:
             initial_weights: Initial weights for each agent
             decision_history_size: Number of past decisions to track
         """
-        # Set up logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("DecisionCoordinator")
         
-        # Initialize agents
         self.news_agent = news_agent
         self.market_agent = market_agent
         self.portfolio_agent = portfolio_agent
         
-        # Initialize weights
         self.weights = initial_weights or {
             'news': 0.35,
             'market': 0.40,
             'portfolio': 0.25
         }
         
-        # Validate weights
         total_weight = sum(self.weights.values())
         if abs(total_weight - 1.0) > 0.001:
             self.logger.warning(f"Weights don't sum to 1.0 (sum: {total_weight}). Normalizing.")
             self.weights = {k: v/total_weight for k, v in self.weights.items()}
         
-        # Decision history for performance tracking
         self.decision_history = []
         self.decision_history_size = decision_history_size
         
-        # Agent performance metrics
         self.agent_performance = {
             'news': {'correct': 0, 'total': 0},
             'market': {'correct': 0, 'total': 0},
             'portfolio': {'correct': 0, 'total': 0}
         }
         
-        # Critical override rules
         self.override_rules = [
             {'name': 'stop_loss', 'priority': 10},
             {'name': 'take_profit', 'priority': 9},
@@ -85,12 +78,9 @@ class EnhancedDecisionCoordinator:
                     'reasoning': 'No headlines provided'
                 }
             
-            # Use the analyze_headlines method for comprehensive analysis
             if hasattr(self.news_agent, 'analyze_headlines'):
                 result = self.news_agent.analyze_headlines(ticker, headlines)
-            # Fall back to simple prediction if analyze_headlines is not available
             elif hasattr(self.news_agent, 'predict'):
-                # Convert prediction to standardized format
                 sentiment_map = {0: 'negative', 1: 'neutral', 2: 'positive'}
                 prediction = self.news_agent.predict(headlines[0])
                 
@@ -107,7 +97,6 @@ class EnhancedDecisionCoordinator:
             else:
                 raise AttributeError("News agent lacks required prediction methods")
             
-            # Map sentiment to action
             sentiment_to_action = {
                 'positive': 'buy',
                 'neutral': 'hold',
@@ -131,9 +120,7 @@ class EnhancedDecisionCoordinator:
         try:
             result = self.market_agent.predict(market_data)
             
-            # Standardize the result format
             if isinstance(result, str):
-                # Simple string result
                 return {
                     'prediction': result,
                     'action': result,
@@ -141,13 +128,11 @@ class EnhancedDecisionCoordinator:
                     'reasoning': "Based on market data analysis"
                 }
             elif isinstance(result, dict):
-                # Already a dictionary result
                 if 'prediction' in result and 'action' not in result:
                     result['action'] = result['prediction']
                 elif 'action' in result and 'prediction' not in result:
                     result['prediction'] = result['action']
                 
-                # Ensure confidence exists
                 if 'confidence' not in result:
                     result['confidence'] = 0.7
                 
@@ -167,17 +152,13 @@ class EnhancedDecisionCoordinator:
     async def get_portfolio_recommendation(self, ticker: str, current_prices: Dict[str, float]) -> Dict:
         """Asynchronously get portfolio recommendation"""
         try:
-            # Check which method signature the portfolio agent supports
             if hasattr(self.portfolio_agent, 'evaluate_position'):
-                # Check if it takes a dictionary or a single price
                 import inspect
                 sig = inspect.signature(self.portfolio_agent.evaluate_position)
                 
                 if len(sig.parameters) >= 2 and 'current_prices' in sig.parameters:
-                    # Takes dictionary of prices
                     result = self.portfolio_agent.evaluate_position(ticker, current_prices)
                 else:
-                    # Takes single price
                     result = self.portfolio_agent.evaluate_position(ticker, current_prices.get(ticker, 0))
             else:
                 raise AttributeError("Portfolio agent lacks required evaluation method")
@@ -261,7 +242,6 @@ class EnhancedDecisionCoordinator:
     
     def _weighted_decision(self, news_result: Dict, market_result: Dict, portfolio_result: Dict) -> Dict:
         """Make a weighted decision based on agent outputs"""
-        # Initialize decision matrix
         decision_matrix = {
             'buy': 0,
             'hold': 0,

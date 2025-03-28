@@ -7,20 +7,12 @@ from agents.portfolio_manager import PortfolioManagerAgent
 from coordinator.coordinator import EnhancedDecisionCoordinator
 from data.yfinance_loader import load_historical_data, get_latest_prices
 from data.news_loader import load_mock_headlines
-# from visualization.charts import (
-#     plot_technical_indicators, 
-#     plot_sentiment_analysis,
-#     plot_portfolio_allocation,
-#     plot_decision_history
-# )
 
 async def main():
-    # Set up logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
     try:
-        # Initialize components
         news_agent = NewsSentimentAgent()
         market_agent = MarketPredictorAgent()
         portfolio_agent = PortfolioManagerAgent(initial_capital=100000)
@@ -36,7 +28,6 @@ async def main():
         market_data = load_historical_data(ticker, period="1y")
         current_prices = get_latest_prices([ticker])
         
-        # Log the headlines being analyzed
         logger.info(f"Analyzing {len(headlines)} headlines for {ticker}:")
         for i, headline in enumerate(headlines):
             logger.info(f"  {i+1}. {headline}")

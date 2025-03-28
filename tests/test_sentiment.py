@@ -1,5 +1,3 @@
-# In tests/test_sentiment.py
-# from agents.news_sentiment import NewsSentimentAgent
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -8,14 +6,12 @@ from agents.news_sentiment import NewsSentimentAgent
 def test_sentiment_analysis():
     agent = NewsSentimentAgent()
     
-    # Test cases with expected sentiment
     test_cases = [
         {"headline": "Company X reports record profits", "expected": "positive"},
         {"headline": "Company X stock plummets after missed earnings", "expected": "negative"},
         {"headline": "Company X announces new product line", "expected": "neutral"}
     ]
     
-    # Run tests and print results
     print("Sentiment Analysis Test Results:")
     print("-" * 50)
     

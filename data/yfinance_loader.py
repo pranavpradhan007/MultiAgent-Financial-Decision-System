@@ -26,22 +26,18 @@ def load_historical_data(ticker: str,
     logging.info(f"Loading historical data for {ticker}")
     
     try:
-        # Use either period or date range
         if start_date and end_date:
             data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
         else:
             data = yf.download(ticker, period=period, interval=interval)
         
-        # Check if data was retrieved successfully
         if data.empty:
             logging.warning(f"No data found for ticker {ticker}")
             return pd.DataFrame(columns=['date', 'price'])
         
-        # Extract close price and reset index
         data = data[['Close']].reset_index()
         data.columns = ['date', 'price']
         
-        # Convert date to datetime if it's not already
         if not pd.api.types.is_datetime64_any_dtype(data['date']):
             data['date'] = pd.to_datetime(data['date'])
             
@@ -68,7 +64,7 @@ def load_multiple_tickers(tickers: List[str], period: str = "1y") -> dict:
             result[ticker] = load_historical_data(ticker, period)
         except Exception as e:
             logging.error(f"Failed to load {ticker}: {str(e)}")
-            result[ticker] = pd.DataFrame()  # Empty DataFrame for failed loads
+            result[ticker] = pd.DataFrame() 
             
     return result
 
@@ -82,11 +78,9 @@ def get_latest_prices(tickers: Union[str, List[str]]) -> dict:
     Returns:
         Dictionary of latest prices with ticker symbols as keys
     """
-    # Convert single ticker to list
     if isinstance(tickers, str):
         tickers = [tickers]
         
-    # Get data for the last 7 days (to account for weekends/holidays)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=7)
     
@@ -108,22 +102,17 @@ def get_latest_prices(tickers: Union[str, List[str]]) -> dict:
             
     return result
 
-# Example usage
 if __name__ == "__main__":
-    # Set up logging
     logging.basicConfig(level=logging.INFO, 
                        format='%(asctime)s - %(levelname)s - %(message)s')
     
-    # Example 1: Load single ticker
     apple_data = load_historical_data('AAPL', period='1y')
     print(f"Loaded {len(apple_data)} days of data for AAPL")
     
-    # Example 2: Load multiple tickers
     tech_stocks = load_multiple_tickers(['AAPL', 'MSFT', 'GOOGL'], period='6mo')
     for ticker, data in tech_stocks.items():
         print(f"{ticker}: {len(data)} days of data")
     
-    # Example 3: Get latest prices
     latest_prices = get_latest_prices(['AAPL', 'MSFT', 'GOOGL'])
     for ticker, price in latest_prices.items():
         print(f"{ticker} latest price: ${price:.2f}")

@@ -5,6 +5,12 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report, f1_score
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 class LSTMPredictor(nn.Module):
     def __init__(self, input_size=7, hidden_size=64, num_layers=2, dropout=0.2):
@@ -13,7 +19,7 @@ class LSTMPredictor(nn.Module):
         self.fc1 = nn.Linear(hidden_size, 32)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(dropout)
-        self.fc2 = nn.Linear(32, 3)  # Buy/Hold/Sell
+        self.fc2 = nn.Linear(32, 3)  # 3= Buy/Hold/Sell
         
     def forward(self, x):
         out, _ = self.lstm(x)
@@ -28,15 +34,13 @@ class MarketPredictorAgent:
         self.model = LSTMPredictor(input_size).to(self.device)
         self.lookback = lookback
         self.scaler = MinMaxScaler(feature_range=(0, 1))
-        self.input_size = input_size
-        
-        # Load model if path provided
+        self.input_size = input_size        
         if model_path:
             self.model.load_state_dict(torch.load(model_path, map_location=self.device))
             self.model.eval()
     
     def calculate_rsi(self, prices, window=14):
-        """Calculate Relative Strength Index"""
+        """Relative Strength Index"""
         deltas = np.diff(prices)
         seed = deltas[:window+1]
         up = seed[seed >= 0].sum()/window
@@ -62,7 +66,7 @@ class MarketPredictorAgent:
         return rsi
     
     def calculate_macd(self, prices, fast=12, slow=26, signal=9):
-        """Calculate MACD (Moving Average Convergence Divergence)"""
+        """Moving Average Convergence Divergence"""
         ema_fast = pd.Series(prices).ewm(span=fast, adjust=False).mean()
         ema_slow = pd.Series(prices).ewm(span=slow, adjust=False).mean()
         macd = ema_fast - ema_slow
@@ -71,19 +75,19 @@ class MarketPredictorAgent:
         return macd.values
     
     def create_sequences(self, data):
-        """Create sequences for LSTM training"""
+        """sequences for LSTM training"""
         X, y = [], []
         features = data.shape[1]  # Number of features
         
         for i in range(len(data) - self.lookback - 1):
-            # Get lookback window
+            # lookback window
             window = data[i:(i + self.lookback)]
             
             # Current price and next day price for determining direction
-            current_close = data[i + self.lookback - 1, 0]  # Assuming price is first column
+            current_close = data[i + self.lookback - 1, 0]  
             next_close = data[i + self.lookback, 0]
             
-            # Determine label: 0=Sell, 1=Hold, 2=Buy
+            # 0=Sell, 1=Hold, 2=Buy
             if next_close > current_close * 1.01:  # 1% increase = Buy
                 label = 2
             elif next_close < current_close * 0.99:  # 1% decrease = Sell
@@ -93,15 +97,12 @@ class MarketPredictorAgent:
             
             X.append(window)
             y.append(label)
-            
+        
+        print(f"Label Distribution: {np.bincount(y)}")    
         return np.array(X), np.array(y)
     
     def add_features(self, df):
-        """Add technical indicators to the dataframe"""
-        # Make a copy to avoid modifying the original
         df = df.copy()
-        
-        # Simple Moving Averages
         df['sma_5'] = df['price'].rolling(5).mean()
         df['sma_20'] = df['price'].rolling(20).mean()
         
@@ -121,61 +122,39 @@ class MarketPredictorAgent:
         df['bb_middle'] = df['price'].rolling(20).mean()
         df['bb_std'] = df['price'].rolling(20).std()
         df['bb_upper'] = df['bb_middle'] + 2 * df['bb_std']
-        df['bb_lower'] = df['bb_middle'] - 2 * df['bb_std']
-        
-        # Drop NaN values
+        df['bb_lower'] = df['bb_middle'] - 2 * df['bb_std']        
         return df.dropna()
     
     def prepare_data(self, df):
         """Prepare data for model training/prediction"""
-        # Select features
         feature_columns = ['price', 'sma_5', 'sma_20', 'rsi', 'macd', 'volatility', 'momentum']
-        data = df[feature_columns].values
-        
-        # Scale the data
+        data = df[feature_columns].values        
         scaled_data = self.scaler.fit_transform(data)
-        
         return scaled_data
     
-    def train(self, ticker_data, epochs=50, batch_size=32, learning_rate=0.001):
+    def train(self, ticker_data, epochs=30, batch_size=32, learning_rate=0.001):
         """Train the LSTM model"""
-        # Add features
-        df = self.add_features(ticker_data)
-        
-        # Prepare data
+        df = self.add_features(ticker_data)        
         scaled_data = self.prepare_data(df)
-        
         # Create sequences
         X, y = self.create_sequences(scaled_data)
-        
-        # Convert to PyTorch tensors
         X_tensor = torch.FloatTensor(X).to(self.device)
         y_tensor = torch.LongTensor(y).to(self.device)
-        
-        # Split into train/validation sets (80/20)
         train_size = int(len(X_tensor) * 0.8)
         X_train, X_val = X_tensor[:train_size], X_tensor[train_size:]
         y_train, y_val = y_tensor[:train_size], y_tensor[train_size:]
-        
-        # Create data loaders
         train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
         val_dataset = torch.utils.data.TensorDataset(X_val, y_val)
-        
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size)
-        
-        # Define loss function and optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5, verbose=True)
-        
-        # Training loop
         train_losses = []
         val_losses = []
         best_val_loss = float('inf')
-        
+        #train
         for epoch in range(epochs):
-            # Training
             self.model.train()
             train_loss = 0
             for inputs, targets in train_loader:
@@ -189,7 +168,7 @@ class MarketPredictorAgent:
             train_loss /= len(train_loader)
             train_losses.append(train_loss)
             
-            # Validation
+            # Val
             self.model.eval()
             val_loss = 0
             correct = 0
@@ -204,25 +183,24 @@ class MarketPredictorAgent:
                     _, predicted = torch.max(outputs.data, 1)
                     total += targets.size(0)
                     correct += (predicted == targets).sum().item()
-            
+                    targets_np = targets.cpu().numpy()
+                    predicted_np = predicted.cpu().numpy()
+
+                    # Calculate F1 score (macro average is often good for imbalance)
+            f1 = f1_score(targets_np, predicted_np, average='macro')
+            report = classification_report(targets_np, predicted_np, target_names=['Sell', 'Hold', 'Buy'], zero_division=0)
             val_loss /= len(val_loader)
             val_losses.append(val_loss)
             accuracy = 100 * correct / total
-            
-            # Learning rate scheduler
             scheduler.step(val_loss)
-            
-            # Save best model
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(self.model.state_dict(), 'best_market_predictor.pth')
             
-            print(f'Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Accuracy: {accuracy:.2f}%')
-        
-        # Load best model
+            print(f'Epoch {epoch+1}/{epochs}, ... Val Loss: {val_loss:.4f}, Accuracy: {accuracy:.2f}%, F1 (Macro): {f1:.4f}')
+            if (epoch+1) % 5 == 0: # Print report less often
+                print(report)
         self.model.load_state_dict(torch.load('best_market_predictor.pth'))
-        
-        # Plot training/validation loss
         plt.figure(figsize=(10, 5))
         plt.plot(train_losses, label='Training Loss')
         plt.plot(val_losses, label='Validation Loss')
@@ -236,20 +214,12 @@ class MarketPredictorAgent:
     
     def predict(self, recent_data):
         """Predict market movement based on recent data"""
-        # Ensure model is in evaluation mode
         self.model.eval()
         
         try:
-            # Add features
             df = self.add_features(recent_data)
-            
-            # Prepare data
             scaled_data = self.prepare_data(df)
-            
-            # Create sequence for prediction (last lookback window)
             X = scaled_data[-self.lookback:].reshape(1, self.lookback, -1)
-            
-            # Convert to PyTorch tensor
             X_tensor = torch.FloatTensor(X).to(self.device)
             
             # Make prediction
@@ -338,3 +308,17 @@ class MarketPredictorAgent:
         """Load a trained model"""
         self.model.load_state_dict(torch.load(path, map_location=self.device))
         self.model.eval()
+
+from data.yfinance_loader import load_historical_data
+
+# ticker = "TSLA"
+# historical_data = load_historical_data(ticker, period="5y")  
+# market_agent = MarketPredictorAgent(input_size=7)  
+# train_losses, val_losses = market_agent.train(
+#     ticker_data=historical_data,
+#     epochs=50,
+#     batch_size=32,
+#     learning_rate=0.001
+# )
+# market_agent.save_model("models/trained_lstm_model.pth")
+

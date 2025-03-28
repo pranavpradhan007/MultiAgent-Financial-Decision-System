@@ -26,18 +26,15 @@ class PortfolioManagerAgent:
             initial_capital: Starting cash amount
             risk_tolerance: Risk profile ('conservative', 'medium', 'aggressive')
         """
-        # Set up logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("PortfolioManager")
         
-        # Validate inputs
         if initial_capital <= 0:
             raise ValueError("Initial capital must be positive")
         
         if risk_tolerance not in ['conservative', 'medium', 'aggressive']:
             raise ValueError("Risk tolerance must be 'conservative', 'medium', or 'aggressive'")
         
-        # Initialize portfolio
         self.portfolio = {
             'cash': initial_capital,
             'holdings': {},  # {ticker: {'shares': n, 'avg_price': x, 'purchase_date': date}}
@@ -79,7 +76,6 @@ class PortfolioManagerAgent:
             }
         }
         
-        # Sector mappings for diversification analysis
         self.sector_mappings = {
             # Technology
             'AAPL': 'Technology', 'MSFT': 'Technology', 'GOOGL': 'Technology',
@@ -101,7 +97,6 @@ class PortfolioManagerAgent:
             'XOM': 'Energy', 'CVX': 'Energy', 'COP': 'Energy',
             'BP': 'Energy', 'SLB': 'Energy', 'EOG': 'Energy',
             
-            # Default for unknown tickers
             'DEFAULT': 'Other'
         }
     
@@ -115,14 +110,12 @@ class PortfolioManagerAgent:
         Returns:
             Total portfolio value
         """
-        # Calculate holdings value
         holdings_value = sum(
             self.portfolio['holdings'].get(ticker, {}).get('shares', 0) * price
             for ticker, price in current_prices.items()
             if ticker in self.portfolio['holdings']
         )
         
-        # Add cash
         return self.portfolio['cash'] + holdings_value
     
     def get_position_info(self, ticker: str, current_price: float) -> Dict:
@@ -182,10 +175,8 @@ class PortfolioManagerAgent:
         if total_value == 0:
             return {'Cash': 1.0}
         
-        # Initialize with cash
         sector_values = {'Cash': self.portfolio['cash']}
         
-        # Add up values by sector
         for ticker, position in self.portfolio['holdings'].items():
             if ticker in current_prices:
                 sector = self.sector_mappings.get(ticker, self.sector_mappings['DEFAULT'])
@@ -196,7 +187,6 @@ class PortfolioManagerAgent:
                 else:
                     sector_values[sector] = value
         
-        # Convert to percentages
         return {sector: value/total_value for sector, value in sector_values.items()}
     
     def buy(self, ticker: str, shares: float, price: float) -> Dict:
@@ -223,9 +213,7 @@ class PortfolioManagerAgent:
         # Execute transaction
         self.portfolio['cash'] -= cost
         
-        # Update holdings
         if ticker in self.portfolio['holdings']:
-            # Update existing position with new average price
             current_shares = self.portfolio['holdings'][ticker]['shares']
             current_avg_price = self.portfolio['holdings'][ticker]['avg_price']
             
@@ -236,14 +224,12 @@ class PortfolioManagerAgent:
             self.portfolio['holdings'][ticker]['shares'] = total_shares
             self.portfolio['holdings'][ticker]['avg_price'] = new_avg_price
         else:
-            # Create new position
             self.portfolio['holdings'][ticker] = {
                 'shares': shares,
                 'avg_price': price,
                 'purchase_date': datetime.now().strftime('%Y-%m-%d')
             }
         
-        # Log transaction
         transaction = {
             'date': datetime.now().strftime('%Y-%m-%d'),
             'action': 'buy',
@@ -273,7 +259,6 @@ class PortfolioManagerAgent:
         Returns:
             Transaction result
         """
-        # Check if position exists
         if ticker not in self.portfolio['holdings']:
             return {
                 'success': False,
@@ -282,31 +267,24 @@ class PortfolioManagerAgent:
         
         current_shares = self.portfolio['holdings'][ticker]['shares']
         
-        # Check if enough shares
         if shares > current_shares:
             return {
                 'success': False,
                 'message': f"Insufficient shares. Requested: {shares}, Available: {current_shares}"
             }
         
-        # Calculate proceeds and profit/loss
         proceeds = shares * price
         avg_price = self.portfolio['holdings'][ticker]['avg_price']
         cost_basis = shares * avg_price
         profit_loss = proceeds - cost_basis
         
-        # Execute transaction
         self.portfolio['cash'] += proceeds
         
-        # Update holdings
         if shares == current_shares:
-            # Remove position completely
             del self.portfolio['holdings'][ticker]
         else:
-            # Reduce position
             self.portfolio['holdings'][ticker]['shares'] -= shares
         
-        # Log transaction
         transaction = {
             'date': datetime.now().strftime('%Y-%m-%d'),
             'action': 'sell',
@@ -367,14 +345,12 @@ class PortfolioManagerAgent:
         total_value = self.get_portfolio_value(current_prices)
         max_position_value = total_value * self.risk_models[self.portfolio['risk_tolerance']]['max_position_size']
         
-        # Account for existing position
         existing_value = 0
         if ticker in self.portfolio['holdings']:
             existing_value = self.portfolio['holdings'][ticker]['shares'] * price
             
         remaining_allocation = max_position_value - existing_value
         
-        # Calculate max shares based on remaining allocation and available cash
         max_shares_by_allocation = remaining_allocation / price if price > 0 else 0
         max_shares_by_cash = self.portfolio['cash'] / price if price > 0 else 0
         
@@ -390,12 +366,10 @@ class PortfolioManagerAgent:
                 current_price = current_prices[ticker]
                 loss_pct = (avg_price - current_price) / avg_price
                 
-                # If loss is significant (over 10%)
                 if loss_pct > 0.1:
                     purchase_date = datetime.strptime(position['purchase_date'], '%Y-%m-%d')
                     days_held = (datetime.now() - purchase_date).days
                     
-                    # Only consider positions held for more than 30 days
                     if days_held > 30:
                         opportunities.append({
                             'ticker': ticker,
@@ -430,20 +404,16 @@ class PortfolioManagerAgent:
         total_value = self.get_portfolio_value(current_prices)
         risk_model = self.risk_models[self.portfolio['risk_tolerance']]
         
-        # Get position details
         position_info = self.get_position_info(ticker, current_price)
         position_value = position_info['market_value']
         position_ratio = position_value / total_value if total_value > 0 else 0
         
-        # Get sector exposure
         sector_exposure = self.get_sector_exposure(current_prices)
         ticker_sector = self.sector_mappings.get(ticker, self.sector_mappings['DEFAULT'])
         sector_allocation = sector_exposure.get(ticker_sector, 0)
         
-        # Check cash position
         cash_ratio = self.portfolio['cash'] / total_value if total_value > 0 else 1
         
-        # Initialize reasoning components
         reasons = []
         action = 'hold'  # Default action
         confidence = 0.5  # Default confidence
@@ -472,21 +442,18 @@ class PortfolioManagerAgent:
             confidence = 0.6
             reasons.append(f"Sector exposure ({sector_allocation*100:.1f}%) exceeds maximum ({risk_model['max_sector_exposure']*100:.0f}%)")
         
-        # Check if we should buy
+        # Check if buy
         elif cash_ratio > risk_model['target_cash'] + risk_model['rebalance_threshold']:
-            # We have excess cash
+            # have excess cash
             if position_ratio < risk_model['max_position_size'] - 0.02:  # Room to grow
                 action = 'buy'
                 confidence = 0.6
                 reasons.append(f"Excess cash ({cash_ratio*100:.1f}% vs target {risk_model['target_cash']*100:.0f}%) and position below maximum")
         
-        # If no strong signals, maintain current position
         else:
             action = 'hold'
             confidence = 0.5
-        # Add position-specific reasoning
         if ticker in self.portfolio['holdings']:
-            # For existing positions
             if position_info['profit_loss_pct'] > 0:
                 reasons.append(f"Current gain: {position_info['profit_loss_pct']*100:.1f}%")
             else:
@@ -494,14 +461,12 @@ class PortfolioManagerAgent:
             
             reasons.append(f"Holding for {position_info['days_held']} days")
         else:
-            # For potential new positions
             max_shares = self.calculate_max_shares_to_buy(ticker, current_price, current_prices)
             if max_shares > 0:
                 reasons.append(f"Can buy up to {max_shares} shares with available cash")
             else:
                 reasons.append("Insufficient cash for new position")
         
-        # Format reasoning
         reasoning = "; ".join(reasons)
         
         return {
@@ -529,7 +494,6 @@ class PortfolioManagerAgent:
         """
         total_value = self.get_portfolio_value(current_prices)
         
-        # Calculate position values and allocations
         positions = []
         for ticker, position in self.portfolio['holdings'].items():
             if ticker in current_prices:
@@ -548,20 +512,15 @@ class PortfolioManagerAgent:
                     'sector': self.sector_mappings.get(ticker, self.sector_mappings['DEFAULT'])
                 })
         
-        # Sort by allocation (descending)
         positions.sort(key=lambda x: x['market_value'], reverse=True)
         
-        # Calculate sector allocations
         sector_exposure = self.get_sector_exposure(current_prices)
         
-        # Calculate performance metrics
         self.update_performance(current_prices)
         performance = self.portfolio['performance']
         
-        # Find tax loss harvesting opportunities
         tax_loss_opportunities = self.get_tax_loss_harvesting_opportunities(current_prices)
         
-        # Calculate diversification score (0-100)
         sector_count = len([s for s, v in sector_exposure.items() if v > 0.05 and s != 'Cash'])
         position_count = len(positions)
         max_allocation = max([p['allocation'] for p in positions]) if positions else 0
@@ -599,13 +558,11 @@ class PortfolioManagerAgent:
         risk_model = self.risk_models[self.portfolio['risk_tolerance']]
         total_value = self.get_portfolio_value(current_prices)
         
-        # Check cash position
         cash_ratio = self.portfolio['cash'] / total_value if total_value > 0 else 1
         target_cash = risk_model['target_cash']
         
         if abs(cash_ratio - target_cash) > risk_model['rebalance_threshold']:
             if cash_ratio > target_cash:
-                # Too much cash
                 excess_cash = self.portfolio['cash'] - (total_value * target_cash)
                 recommendations.append({
                     'action': 'deploy_cash',
@@ -613,7 +570,6 @@ class PortfolioManagerAgent:
                     'reasoning': f"Cash allocation ({cash_ratio*100:.1f}%) exceeds target ({target_cash*100:.0f}%)"
                 })
             else:
-                # Too little cash
                 cash_needed = (total_value * target_cash) - self.portfolio['cash']
                 recommendations.append({
                     'action': 'raise_cash',
@@ -621,7 +577,6 @@ class PortfolioManagerAgent:
                     'reasoning': f"Cash allocation ({cash_ratio*100:.1f}%) below target ({target_cash*100:.0f}%)"
                 })
         
-        # Check position sizes
         for ticker, position in self.portfolio['holdings'].items():
             if ticker in current_prices:
                 price = current_prices[ticker]
@@ -629,7 +584,6 @@ class PortfolioManagerAgent:
                 position_ratio = position_value / total_value
                 
                 if position_ratio > risk_model['max_position_size'] + risk_model['rebalance_threshold']:
-                    # Position too large
                     excess_value = position_value - (total_value * risk_model['max_position_size'])
                     shares_to_sell = int(excess_value / price) if price > 0 else 0
                     
@@ -642,12 +596,10 @@ class PortfolioManagerAgent:
                             'reasoning': f"{ticker} position ({position_ratio*100:.1f}%) exceeds maximum ({risk_model['max_position_size']*100:.0f}%)"
                         })
         
-        # Check sector exposures
         sector_exposure = self.get_sector_exposure(current_prices)
         
         for sector, allocation in sector_exposure.items():
             if sector != 'Cash' and allocation > risk_model['max_sector_exposure'] + risk_model['rebalance_threshold']:
-                # Sector too concentrated
                 recommendations.append({
                     'action': 'reduce_sector',
                     'sector': sector,
@@ -671,15 +623,12 @@ class PortfolioManagerAgent:
         Returns:
             Simulated result dictionary
         """
-        # Create a copy of the portfolio
         import copy
         portfolio_copy = copy.deepcopy(self.portfolio)
         
-        # Temporarily replace the actual portfolio with the copy
         original_portfolio = self.portfolio
         self.portfolio = portfolio_copy
         
-        # Execute the simulated transaction
         if action.lower() == 'buy':
             result = self.buy(ticker, shares, price)
         elif action.lower() == 'sell':
@@ -687,10 +636,8 @@ class PortfolioManagerAgent:
         else:
             result = {'success': False, 'message': f"Invalid action: {action}"}
         
-        # Restore the original portfolio
         self.portfolio = original_portfolio
         
-        # Add simulation flag
         result['simulated'] = True
         
         return result
@@ -734,11 +681,8 @@ class PortfolioManagerAgent:
         total_value = self.get_portfolio_value(current_prices)
         risk_model = self.risk_models[self.portfolio['risk_tolerance']]
         
-        # Base position size from risk model
         base_size = risk_model['max_position_size']
         
-        # Adjust for volatility (reduce size for higher volatility)
-        # Assuming volatility is annualized standard deviation
         volatility_factor = 1.0
         if volatility > 0.4:  # Very high volatility (>40%)
             volatility_factor = 0.5
@@ -747,10 +691,8 @@ class PortfolioManagerAgent:
         elif volatility > 0.2:  # Moderate volatility (20-30%)
             volatility_factor = 0.9
         
-        # Calculate adjusted position size
         adjusted_size = base_size * volatility_factor
         
-        # Calculate dollar amount and shares
         position_value = total_value * adjusted_size
         shares = int(position_value / current_price) if current_price > 0 else 0
         

@@ -13,7 +13,6 @@ def load_mock_headlines(ticker, count=50):
         list[str]: A list of mock headlines for the given ticker.
     """
 
-    # --- Headline Templates ---
 
     positive_templates = [
         # Earnings & Financials
@@ -148,7 +147,6 @@ def load_mock_headlines(ticker, count=50):
         "{ticker}'s employee training programs updated",
     ]
 
-    # --- Placeholder Values (Simple examples) ---
     placeholders = {
         "percent": [str(random.randint(5, 25))],
         "product_type": ["AI", "cloud", "mobile", "wearable", "EV", "gaming", "software"],
@@ -179,29 +177,24 @@ def load_mock_headlines(ticker, count=50):
         "business_process": ["customer onboarding", "supply chain logistics", "talent acquisition"],
     }
 
-    # --- Generate Headlines for Each Ticker ---
     headlines_by_ticker = {}
     tickers_to_generate = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA']
 
-    # Ensure the requested ticker is included if not in the main list
     if ticker not in tickers_to_generate:
          tickers_to_generate.append(ticker)
 
-    target_per_category = 20 # Aim for roughly 20 of each (pos, neg, neu) -> 60 total
+    target_per_category = 20
 
     for t in tickers_to_generate:
         ticker_headlines = []
-        # Add Positive
         for _ in range(target_per_category):
             template = random.choice(positive_templates)
-            # Basic placeholder filling
             filled_template = template.format(
                 ticker=t,
                 **{k: random.choice(v) for k, v in placeholders.items()}
             )
             ticker_headlines.append(filled_template)
 
-        # Add Negative
         for _ in range(target_per_category):
             template = random.choice(negative_templates)
             filled_template = template.format(
@@ -210,7 +203,6 @@ def load_mock_headlines(ticker, count=50):
             )
             ticker_headlines.append(filled_template)
 
-        # Add Neutral
         for _ in range(target_per_category):
             template = random.choice(neutral_templates)
             filled_template = template.format(
@@ -219,7 +211,6 @@ def load_mock_headlines(ticker, count=50):
             )
             ticker_headlines.append(filled_template)
 
-        # Add some specific flavor (examples) - Can be expanded significantly
         if t == "TSLA":
             ticker_headlines.extend([
                 "Tesla lowers Model 3 prices in China amid competition",
@@ -244,25 +235,18 @@ def load_mock_headlines(ticker, count=50):
                  "Competitors challenge Nvidia's dominance in the AI hardware market",
                  "Nvidia's stock valuation comes under scrutiny",
              ])
-        # Add similar specific lines for MSFT, GOOGL, AMZN, META...
 
-        # Shuffle and store
         random.shuffle(ticker_headlines)
         headlines_by_ticker[t] = ticker_headlines
 
-    # --- Return Result ---
-    # Fallback for unknown tickers
     default_headlines = [f"{ticker} stock sees increased trading volume today."] * 5 + \
                         [f"Analysts issue mixed ratings for {ticker}."] * 5 + \
                         [f"Market awaits news from {ticker}."] * 5
 
-    # Get headlines for the requested ticker, use default if not found
     selected_headlines = headlines_by_ticker.get(ticker, default_headlines)
 
-    # Return the requested number of headlines
     return selected_headlines[:count]
 
-# --- Example Usage ---
 if __name__ == "__main__":
     ticker = "TSLA"
     num_headlines = 55
@@ -272,7 +256,6 @@ if __name__ == "__main__":
     if headlines:
         for i, headline in enumerate(headlines):
             print(f"{i+1}. {headline}")
-        # print(f"\nTotal headlines generated for {ticker}: {len(headlines_by_ticker.get(ticker, []))}")
         print(f"Total headlines returned: {len(headlines)}")
     else:
         print(f"No headlines found or generated for {ticker}.")
@@ -287,7 +270,7 @@ if __name__ == "__main__":
     else:
          print(f"No headlines found or generated for {ticker}.")
 
-    ticker = "XYZ" # Unknown ticker
+    ticker = "XYZ" 
     num_headlines = 3
     headlines = load_mock_headlines(ticker, num_headlines)
     print(f"\n--- Sample Headlines for {ticker} (Max {num_headlines}) ---")

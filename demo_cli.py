@@ -3,14 +3,14 @@ import asyncio
 import logging
 import sys
 import os
+import re
 from typing import Dict, List, Optional
 from datetime import datetime
 import pandas as pd
+import random
 
-# Ensure the project root is in the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import components
 from agents.news_sentiment import NewsSentimentAgent
 from agents.market_predictor import MarketPredictorAgent
 from agents.portfolio_manager import PortfolioManagerAgent
@@ -18,7 +18,6 @@ from coordinator.coordinator import EnhancedDecisionCoordinator
 from data.yfinance_loader import load_historical_data, get_latest_prices
 from data.loaders import load_mock_headlines
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -28,7 +27,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Sample portfolio for demo
+# Sample portfolio 
 SAMPLE_PORTFOLIO = {
     'cash': 100000,
     'holdings': {
@@ -39,6 +38,17 @@ SAMPLE_PORTFOLIO = {
     'risk_tolerance': 'medium'
 }
 
+COMPANY_KEYWORDS = {
+    'AAPL': ['apple', 'iphone', 'ipad', 'mac', 'tim cook'],
+    'MSFT': ['microsoft', 'windows', 'azure', 'satya nadella'],
+    'GOOGL': ['google', 'alphabet', 'android', 'sundar pichai'],
+    'AMZN': ['amazon', 'aws', 'jeff bezos', 'andy jassy'],
+    'TSLA': ['tesla', 'elon musk', 'electric vehicle', 'ev'],
+    'META': ['facebook', 'instagram', 'meta', 'zuckerberg'],
+    'NFLX': ['netflix', 'streaming'],
+    'NVDA': ['nvidia', 'gpu', 'jensen huang'],
+}
+
 class FinancialAdvisorCLI:
     """Interactive CLI for the multi-agent financial decision system"""
     
@@ -47,17 +57,14 @@ class FinancialAdvisorCLI:
         self.portfolio = SAMPLE_PORTFOLIO.copy()
         self.setup_agents()
         
-        
     def setup_agents(self):
         """Initialize all agents and the coordinator"""
         logger.info("Initializing financial decision system...")
         
-        # Initialize agents
-        self.news_agent = NewsSentimentAgent()
-        self.market_agent = MarketPredictorAgent(input_size=7)  # Make sure input_size matches features
+        self.news_agent = NewsSentimentAgent(model_path="models/finbert_finetuned", use_cached=True)
+        self.market_agent = MarketPredictorAgent(model_path="models/trained_lstm_model.pth",input_size=7)
         self.portfolio_agent = PortfolioManagerAgent(initial_capital=self.portfolio['cash'])
         
-        # Initialize coordinator
         self.coordinator = EnhancedDecisionCoordinator(
             news_agent=self.news_agent,
             market_agent=self.market_agent,
@@ -66,32 +73,43 @@ class FinancialAdvisorCLI:
         
         logger.info("System initialized successfully")
     
-    async def get_recommendation(self, ticker: str, headline_count: int = 5) -> Dict:
+    def process_natural_language_query(self, query: str) -> Dict:
+        """Process natural language query using the existing FinBERT model"""
+        sentiment_result = self.news_agent.predict_single(query)
+        query_lower = query.lower()
+        
+        if any(phrase in query_lower for phrase in ["what about", "how is", "should i buy", "thoughts on"]):
+            # Extract potential ticker or company name
+            for company, keywords in COMPANY_KEYWORDS.items():
+                if any(keyword in query_lower for keyword in keywords):
+                    return {"intent": "analyze", "ticker": company}
+        
+        # Check for portfolio-related queries
+        if any(word in query_lower for word in ["portfolio", "holdings", "investments"]):
+            return {"intent": "portfolio"}
+        
+        return {"intent": "unknown", "query": query}
+    
+    async def get_recommendation(self, ticker: str, headline_count: int = 10) -> Dict:
         """Get a recommendation for a specific ticker"""
         logger.info(f"Analyzing {ticker}...")
         
-        # Load market data
         market_data = load_historical_data(ticker, period="1y")
         if market_data.empty:
             return {"error": f"Could not find data for ticker {ticker}"}
         
-        # Add technical indicators
         enhanced_data = self.market_agent.add_features(market_data.copy())
         
-        # Get current prices
         current_prices = get_latest_prices([ticker])
         if ticker not in current_prices or current_prices[ticker] is None:
             return {"error": f"Could not get current price for {ticker}"}
         
-        # Get headlines
         headlines = load_mock_headlines(ticker, count=headline_count)
         
-        # Log what we're analyzing
         logger.info(f"Analyzing {len(headlines)} headlines for {ticker}")
         for i, headline in enumerate(headlines):
             logger.info(f"  {i+1}. {headline}")
         
-        # Get recommendation
         decision = await self.coordinator.decide(
             ticker=ticker,
             headlines=headlines,
@@ -107,22 +125,27 @@ class FinancialAdvisorCLI:
             print(f"\n❌ ERROR: {decision['error']}")
             return
             
-        # Extract key information
         ticker = decision.get('ticker', 'Unknown')
         action = decision.get('action', 'Unknown').upper()
         confidence = decision.get('confidence', 0)
         
+        # Get and display current price
+        current_prices = get_latest_prices([ticker])
+        current_price = current_prices.get(ticker, None)
+        
         # Format the output
         print("\n" + "="*80)
         print(f"📊 RECOMMENDATION FOR {ticker}: {action} ({confidence:.0%} CONFIDENCE)")
+        if current_price:
+            print(f"Current Price: ${current_price:.2f}")
         print("="*80)
         
         # Check if there's an override
         if 'override_reason' in decision:
             print(f"\n⚠️ OVERRIDE ALERT: {decision['override_reason']}")
         
-        # Print the full explanation
         print("\n" + decision.get('explanation', 'No explanation available'))
+
         
     def display_portfolio(self):
         """Display the current portfolio"""
@@ -130,7 +153,6 @@ class FinancialAdvisorCLI:
         print("📈 CURRENT PORTFOLIO")
         print("="*80)
         
-        # Cash position
         print(f"\nCash: ${self.portfolio['cash']:,.2f}")
         
         # Holdings
@@ -166,11 +188,9 @@ class FinancialAdvisorCLI:
             if cost > self.portfolio['cash']:
                 print(f"\n❌ Not enough cash to buy {shares} shares of {ticker} at ${price:.2f}")
                 return False
-                
-            # Update cash
+                          
             self.portfolio['cash'] -= cost
             
-            # Update holdings
             if ticker in self.portfolio['holdings']:
                 # Calculate new average price
                 current_shares = self.portfolio['holdings'][ticker]['shares']
@@ -200,11 +220,9 @@ class FinancialAdvisorCLI:
                 print(f"\n❌ Not enough shares to sell (have {current_shares}, trying to sell {shares})")
                 return False
                 
-            # Update cash
             proceeds = shares * price
             self.portfolio['cash'] += proceeds
             
-            # Update holdings
             if shares == current_shares:
                 del self.portfolio['holdings'][ticker]
             else:
@@ -233,6 +251,7 @@ class FinancialAdvisorCLI:
             print("  buy [ticker] [shares] - Buy shares of a stock")
             print("  sell [ticker] [shares] - Sell shares of a stock")
             print("  risk [low/medium/high] - Change your risk tolerance")
+            print("  ask [question] - Ask a natural language question about a stock")
             print("  exit - Exit the program")
             print("-"*80)
             
@@ -301,6 +320,24 @@ class FinancialAdvisorCLI:
                         print("\n❌ Risk must be 'low', 'medium', or 'high'")
                 else:
                     print("\n❌ Please specify risk level (e.g., risk medium)")
+            
+            elif command.startswith('ask '):
+                query = command[4:].strip()
+                if query:
+                    result = self.process_natural_language_query(query)
+                    
+                    if result['intent'] == 'analyze':
+                        ticker = result['ticker']
+                        print(f"\nAnalyzing {ticker} based on your question...")
+                        decision = await self.get_recommendation(ticker)
+                        self.display_recommendation(decision)
+                    elif result['intent'] == 'portfolio':
+                        print("\nHere's your portfolio information:")
+                        self.display_portfolio()
+                    else:
+                        print("\n❌ I'm not sure how to answer that question. Try asking about a specific stock like 'What about Apple?' or 'Should I buy Tesla?'")
+                else:
+                    print("\n❌ Please ask a question after 'ask'")
                     
             else:
                 print("\n❌ Unknown command. Type 'exit' to quit.")
@@ -310,7 +347,6 @@ def main():
     cli = FinancialAdvisorCLI()
     
     try:
-        # Run the interactive loop
         asyncio.run(cli.interactive_loop())
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
