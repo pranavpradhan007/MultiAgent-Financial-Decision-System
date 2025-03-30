@@ -25,7 +25,7 @@ This report details the architecture, individual agent designs, coordination log
 
 **2. System Architecture**
 
-MAFDS employs a modular, agent-based architecture designed for clarity, extensibility, and efficient information processing. The core components and data flow are illustrated below (conceptual):
+MAFDS employs a modular, agent-based architecture designed for clarity, extensibility, and efficient information processing. The core components and data flow are illustrated below:
 
 ```mermaid
 graph TD
