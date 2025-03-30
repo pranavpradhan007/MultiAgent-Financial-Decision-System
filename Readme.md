@@ -29,26 +29,26 @@ MAFDS employs a modular, agent-based architecture designed for clarity, extensib
 
 ```mermaid
 graph TD
-    A[Data Sources] -->|yfinance Data| B(Market Predictor Agent - LSTM);
-    A -->|Mock/Real News Headlines| C(News Sentiment Agent - FinBERT);
-    A -->|Current Prices, Portfolio State| D(Portfolio Manager Agent - Rules);
-    B --> E{Enhanced Decision Coordinator};
+    A["<b>Data Sources</b>"] -->|yfinance Data| B("<b>Market Predictor Agent - LSTM</b>");
+    A -->|Mock/Real News Headlines| C("<b>News Sentiment Agent - FinBERT</b>");
+    A -->|Current Prices, Portfolio State| D("<b>Portfolio Manager Agent - Rules</b>");
+    B --> E{"<b>Enhanced Decision Coordinator</b>"};
     C --> E;
     D --> E;
-    E --> F[Final Recommendation + Explanation];
+    E --> F["<b>Final Recommendation + Explanation</b>"];
 
-    subgraph "Data Loading"
+    subgraph "<b>Data Loading</b>"
         A
     end
-    subgraph "Agent Layer"
+    subgraph "<b>Agent Layer</b>"
         B
         C
         D
     end
-    subgraph "Coordination Layer"
+    subgraph "<b>Coordination Layer</b>"
         E
     end
-    subgraph "Output"
+    subgraph "<b>Output</b>"
         F
     end
 
