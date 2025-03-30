@@ -1,5 +1,13 @@
 **Project Report: MAFDS - A Multi-Agent Financial Decision System**
 
+---
+**Notes**
+
+*    To use the finetuned model use the last link(google drive link) for `model.safetensors`.
+*    To use the system first install the `requirements.txt`. `pip install -r requirements.txt`
+*    To run the interactivre cli, run the `demo_cli.py`. `python demo_cli.py`
+---   
+
 **Author:** Pranav Tushar Pradhan\
 **Date:** March 30, 2025
 
@@ -293,11 +301,8 @@ MAFDS provides a solid foundation with significant potential for enhancement:
 
 MAFDS successfully demonstrates the power of a multi-agent approach for complex financial decision support. By integrating specialized agents focused on news sentiment, market technicals, and portfolio management, the system provides nuanced and explainable recommendations. Its modular architecture, asynchronous processing, and focus on transparency align with modern MAS design principles, drawing inspiration from systems like FINCON. While further improvements, particularly in market prediction accuracy and real-time data integration, are necessary for production readiness, MAFDS serves as a robust and extensible framework with significant potential. Future work focusing on advanced reinforcement learning for portfolio optimization and enhanced predictive modeling promises to further elevate its capabilities.
 
-**9. Notes**
 
-To use the finetuned model use the last link(google drive link) for `model.safetensors`.
-
-**10. References**
+**9. References**
 
 *   Araci, D. (2019). FinBERT: Financial Sentiment Analysis with Pre-trained Language Models. *arXiv preprint arXiv:1908.10063*.
 *   Markowitz, H. (1952). Portfolio Selection. *The Journal of Finance*, 7(1), 77–91.
