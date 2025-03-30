@@ -293,12 +293,16 @@ MAFDS provides a solid foundation with significant potential for enhancement:
 
 MAFDS successfully demonstrates the power of a multi-agent approach for complex financial decision support. By integrating specialized agents focused on news sentiment, market technicals, and portfolio management, the system provides nuanced and explainable recommendations. Its modular architecture, asynchronous processing, and focus on transparency align with modern MAS design principles, drawing inspiration from systems like FINCON. While further improvements, particularly in market prediction accuracy and real-time data integration, are necessary for production readiness, MAFDS serves as a robust and extensible framework with significant potential. Future work focusing on advanced reinforcement learning for portfolio optimization and enhanced predictive modeling promises to further elevate its capabilities.
 
-**9. References**
+**9. Notes**
+
+To use the finetuned model use the last link(google drive link) for `model.safetensors`.
+
+**10. References**
 
 *   Araci, D. (2019). FinBERT: Financial Sentiment Analysis with Pre-trained Language Models. *arXiv preprint arXiv:1908.10063*.
 *   Markowitz, H. (1952). Portfolio Selection. *The Journal of Finance*, 7(1), 77–91.
 *   Wooldridge, M. (2009). *An Introduction to MultiAgent Systems* (2nd ed.). John Wiley & Sons.
 *   Zhang, K., Liu, Y., Zhao, Z., Chen, Z., Lin, Y., Zheng, R., Tao, C., Shen, W., Liu, Z., & Sun, M. (2024). FINCON: A Synthesized LLM Multi-Agent System with Conceptual Verbal Reinforcement for Enhanced Financial Decision Making. *Advances in Neural Information Processing Systems (NeurIPS 2024)*. [https://proceedings.neurips.cc/paper_files/paper/2024/file/f7ae4fe91d96f50abc2211f09b6a7e49-Paper-Conference.pdf](https://proceedings.neurips.cc/paper_files/paper/2024/file/f7ae4fe91d96f50abc2211f09b6a7e49-Paper-Conference.pdf)
-
+*    [https://drive.google.com/file/d/14tQG73sNWpprEj6PJDcIAjzhPd-IuWAG/view?usp=drive_link](model.safetensors)
 
 ---
